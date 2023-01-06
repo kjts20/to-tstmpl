@@ -134,7 +134,7 @@ const project2TsTmpl = function (dirName, tsTmplName) {
         },
         afterFolderReadHandler: function (folder) {
             const { fullname } = toAbsPath(folder);
-            const toExport = (exportFileList) => exportFileList.map((it) => `export * from "./${it}";`);
+            const toExport = (exportFileList) => (exportFileList ||[]).map((it) => `export * from "./${it}";`);
             // 写index.ts
             let fileContent = [];
             if (fullname) {
@@ -150,7 +150,9 @@ const project2TsTmpl = function (dirName, tsTmplName) {
                     }
                 }
             }
-            fs.writeFileSync(resolve(tsTmplName, fullname, "index.ts"), fileContent.join("\n"));
+            if(fileContent.length > 0){
+                fs.writeFileSync(resolve(tsTmplName, fullname, "index.ts"), fileContent.join("\n"));
+            }
         },
     });
 };
