@@ -77,6 +77,9 @@ const getFilename = function (basename) {
     return basename.slice(0, basename.lastIndexOf("."));
 };
 
+// 只是复制的文件
+const copyFileExt = ["png", "jpeg", "jpg"];
+
 // 读取所有文件，并整理为ts模板
 const project2TsTmpl = function (dirName, tsTmplName) {
     // 生成相对路径
@@ -99,17 +102,23 @@ const project2TsTmpl = function (dirName, tsTmplName) {
         fileHanlder: function (fileName) {
             const { basename, dirname, dirnameArr, fullname } = toAbsPath(fileName);
             if (!isIgnore(fullname)) {
-                const fileVarName = fileName2VarName(basename);
-                // 记录目录中文件情况
-                if (!Array.isArray(folderFileDict[dirname])) {
-                    folderFileDict[dirname] = [];
-                }
-                folderFileDict[dirname].push(fileVarName);
-                // 写入文件
                 const ext = basename.slice(basename.lastIndexOf(".") + 1);
-                const pathAndFile = [...dirnameArr, getFilename(basename)];
-                const fileContent = ["const " + fileVarName + "File = `\n" + fs.readFileSync(fileName) + "\n`;", `export const ${toGlobalExportVarName(fullname)} = {file: ${fileVarName}File, name: [${pathAndFile.filter((it) => it !== ".").map((it) => "'" + it + "'")}], ext:'${ext}'};`];
-                fs.writeFileSync(resolve(tsTmplName, dirname, fileVarName + ".ts"), fileContent.join("\n"));
+                if (copyFileExt.includes(ext)) {
+                    // 复制文件
+                    fs.copyFileSync(fileName, resolve(tsTmplName, fullname));
+                } else {
+                    // 文本文件
+                    const fileVarName = fileName2VarName(basename);
+                    // 记录目录中文件情况
+                    if (!Array.isArray(folderFileDict[dirname])) {
+                        folderFileDict[dirname] = [];
+                    }
+                    folderFileDict[dirname].push(fileVarName);
+                    // 写入文件
+                    const pathAndFile = [...dirnameArr, getFilename(basename)];
+                    const fileContent = ["const " + fileVarName + "File = `\n" + fs.readFileSync(fileName) + "\n`;", `export const ${toGlobalExportVarName(fullname)} = {file: ${fileVarName}File, name: [${pathAndFile.filter((it) => it !== ".").map((it) => "'" + it + "'")}], ext:'${ext}'};`];
+                    fs.writeFileSync(resolve(tsTmplName, dirname, fileVarName + ".ts"), fileContent.join("\n"));
+                }
             }
         },
         beforeFolderReadHandler: function (folder) {
