@@ -72,10 +72,6 @@ const toGlobalExportVarName = function (fileName) {
         })
         .join("");
 };
-//  获取文件名字
-const getFilename = function (basename) {
-    return basename.slice(0, basename.lastIndexOf("."));
-};
 
 // 只是复制的文件
 const copyFileExt = ["png", "jpeg", "jpg"];
@@ -116,7 +112,7 @@ const project2TsTmpl = function (dirName, tsTmplName) {
                     }
                     folderFileDict[dirname].push(fileVarName);
                     // 写入文件
-                    const pathAndFile = [...dirnameArr, basename.slice(0, basename.length - ext.length - 1)];
+                    const pathAndFile = [...dirnameArr, basename.slice(0, basename.length - ext.length - (isHideFile ? 0 : 1))];
                     const fileContent = ["const " + fileVarName + "File = ()=>`\n" + fs.readFileSync(fileName) + "\n`;", `export const ${toGlobalExportVarName(fullname)} = {toContent: ${fileVarName}File, name: [${pathAndFile.filter((it) => it !== ".").map((it) => "'" + it + "'")}], ext:'${ext}'};`];
                     fs.writeFileSync(resolve(tsTmplName, dirname, fileVarName + ".ts"), fileContent.join("\n"));
                 }
