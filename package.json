@@ -1,0 +1,15 @@
+{
+  "name": "@kjts20/to-tstmpl",
+  "version": "0.0.1",
+  "description": "时时科技，目录转换为ts模版",
+  "main": "bin/index.js",
+  "bin": {
+    "sstotstmpl": "bin/index.js"
+  },
+  "scripts": {
+    "pub": "npm version patch && npm publish"
+  },
+  "keywords": [],
+  "author": "wkj",
+  "license": "ISC"
+}
