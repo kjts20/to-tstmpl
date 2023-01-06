@@ -116,7 +116,7 @@ const project2TsTmpl = function (dirName, tsTmplName) {
                     folderFileDict[dirname].push(fileVarName);
                     // 写入文件
                     const pathAndFile = [...dirnameArr, getFilename(basename)];
-                    const fileContent = ["const " + fileVarName + "File = `\n" + fs.readFileSync(fileName) + "\n`;", `export const ${toGlobalExportVarName(fullname)} = {file: ${fileVarName}File, name: [${pathAndFile.filter((it) => it !== ".").map((it) => "'" + it + "'")}], ext:'${ext}'};`];
+                    const fileContent = ["const " + fileVarName + "File = ()=>`\n" + fs.readFileSync(fileName) + "\n`;", `export const ${toGlobalExportVarName(fullname)} = {toContent: ${fileVarName}File, name: [${pathAndFile.filter((it) => it !== ".").map((it) => "'" + it + "'")}], ext:'${ext}'};`];
                     fs.writeFileSync(resolve(tsTmplName, dirname, fileVarName + ".ts"), fileContent.join("\n"));
                 }
             }
