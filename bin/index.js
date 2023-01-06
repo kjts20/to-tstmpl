@@ -102,7 +102,8 @@ const project2TsTmpl = function (dirName, tsTmplName) {
         fileHanlder: function (fileName) {
             const { basename, dirname, dirnameArr, fullname } = toAbsPath(fileName);
             if (!isIgnore(fullname)) {
-                const ext = basename.slice(basename.lastIndexOf(".") + 1);
+                const isHideFile = /^\..*?$/.test(basename);
+                const ext = isHideFile ? "" : basename.slice(basename.lastIndexOf(".") + 1);
                 if (copyFileExt.includes(ext)) {
                     // 复制文件
                     fs.copyFileSync(fileName, resolve(tsTmplName, fullname));
@@ -115,7 +116,7 @@ const project2TsTmpl = function (dirName, tsTmplName) {
                     }
                     folderFileDict[dirname].push(fileVarName);
                     // 写入文件
-                    const pathAndFile = [...dirnameArr, getFilename(basename)];
+                    const pathAndFile = [...dirnameArr, basename.slice(0, basename.length - ext.length - 1)];
                     const fileContent = ["const " + fileVarName + "File = ()=>`\n" + fs.readFileSync(fileName) + "\n`;", `export const ${toGlobalExportVarName(fullname)} = {toContent: ${fileVarName}File, name: [${pathAndFile.filter((it) => it !== ".").map((it) => "'" + it + "'")}], ext:'${ext}'};`];
                     fs.writeFileSync(resolve(tsTmplName, dirname, fileVarName + ".ts"), fileContent.join("\n"));
                 }
