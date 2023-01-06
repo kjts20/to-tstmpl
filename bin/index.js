@@ -58,13 +58,13 @@ const firstLowercase = (txt) => {
 // 文件名字转命名
 const fileName2VarName = function (fileName) {
     return (fileName + "")
-        .split(".")
+        .split(/[\.\-\/\\\@]/)
         .map((it, i) => (i === 0 ? it : firstUpcase(it)))
         .join("");
 };
 // 文件名字转命名
 const toGlobalExportVarName = function (fileName) {
-    const paths = fileName.split("/");
+    const paths = fileName.split(/[\/\\]/);
     return paths
         .map((it, i) => {
             let name = fileName2VarName(it);
