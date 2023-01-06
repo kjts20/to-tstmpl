@@ -24,7 +24,7 @@ const ignorePatternList = (function () {
     patternList.push(defaultTmplDirName);
     return patternList.map((it) => {
         const reStr = it.replace(/\./, "\\.").replace(/\*/g, ".*?");
-        return new RegExp(reStr);
+        return new RegExp("^" + reStr + "$");
     });
 })();
 
@@ -55,13 +55,6 @@ const firstLowercase = (txt) => {
     return (it[0] || "").toLowerCase() + it.slice(1);
 };
 
-/**
- * 去掉首部的点
- */
-const trimFirstPoint = function (str) {
-    return (str || "").replace(/^\.(.+)$/, "$1");
-};
-
 // 文件名字转命名
 const fileName2VarName = function (fileName) {
     return (fileName + "")
@@ -72,13 +65,9 @@ const fileName2VarName = function (fileName) {
 // 文件名字转命名
 const toGlobalExportVarName = function (fileName) {
     const paths = fileName.split("/");
-    const lastIndex = paths.length - 1;
     return paths
         .map((it, i) => {
-            let name = it;
-            if (i === lastIndex) {
-                name = fileName2VarName(it);
-            }
+            let name = fileName2VarName(it);
             return i === 0 ? name : firstUpcase(name);
         })
         .join("");
@@ -117,10 +106,10 @@ const project2TsTmpl = function (dirName, tsTmplName) {
                 }
                 folderFileDict[dirname].push(fileVarName);
                 // 写入文件
-                const ext = path.extname(basename);
+                const ext = basename.slice(basename.lastIndexOf(".") + 1);
                 const pathAndFile = [...dirnameArr, getFilename(basename)];
-                const fileContent = ["const " + fileVarName + "File = `\n" + fs.readFileSync(fileName) + "\n`;", `export const ${toGlobalExportVarName(fullname)} = {file: ${fileVarName}File, name: [${pathAndFile.map((it) => "'" + it + "'")}], ext:'${trimFirstPoint(ext)}'};`].join("\n");
-                fs.writeFileSync(resolve(tsTmplName, dirname, fileVarName + ".ts"), fileContent);
+                const fileContent = ["const " + fileVarName + "File = `\n" + fs.readFileSync(fileName) + "\n`;", `export const ${toGlobalExportVarName(fullname)} = {file: ${fileVarName}File, name: [${pathAndFile.filter((it) => it !== ".").map((it) => "'" + it + "'")}], ext:'${ext}'};`];
+                fs.writeFileSync(resolve(tsTmplName, dirname, fileVarName + ".ts"), fileContent.join("\n"));
             }
         },
         beforeFolderReadHandler: function (folder) {
@@ -134,7 +123,7 @@ const project2TsTmpl = function (dirName, tsTmplName) {
         },
         afterFolderReadHandler: function (folder) {
             const { fullname } = toAbsPath(folder);
-            const toExport = (exportFileList) => (exportFileList ||[]).map((it) => `export * from "./${it}";`);
+            const toExport = (exportFileList) => (exportFileList || []).map((it) => `export * from "./${it}";`);
             // 写index.ts
             let fileContent = [];
             if (fullname) {
@@ -150,7 +139,7 @@ const project2TsTmpl = function (dirName, tsTmplName) {
                     }
                 }
             }
-            if(fileContent.length > 0){
+            if (fileContent.length > 0) {
                 fs.writeFileSync(resolve(tsTmplName, fullname, "index.ts"), fileContent.join("\n"));
             }
         },
