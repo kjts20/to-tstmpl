@@ -2,21 +2,21 @@ const fs = require("fs");
 const { resolve } = require("path");
 
 // 扫描文件
-function scanFileOrFolder(fileOrFolder, options){
+function scanFileOrFolder(fileOrFolder, options) {
     if (fs.existsSync(fileOrFolder)) {
         // 整理处理函数
-        const {fileHanlder, beforeFolderReadHandler, afterFolderReadHandler} = options || {};
-        const sFileHanlder = typeof fileHanlder === 'function'?fileHanlder:()=>{};
-        const sBeforeFolderReadHandler = typeof beforeFolderReadHandler === 'function'?beforeFolderReadHandler:()=>true;
-        const sAfterFolderReadHandler = typeof afterFolderReadHandler === 'function'?afterFolderReadHandler:()=>{};
+        const { fileHandler, beforeFolderReadHandler, afterFolderReadHandler } = options || {};
+        const sFileHandler = typeof fileHandler === "function" ? fileHandler : () => {};
+        const sBeforeFolderReadHandler = typeof beforeFolderReadHandler === "function" ? beforeFolderReadHandler : () => true;
+        const sAfterFolderReadHandler = typeof afterFolderReadHandler === "function" ? afterFolderReadHandler : () => {};
         // 判断类型并进行回调
         const stat = fs.statSync(fileOrFolder);
-        if(stat.isFile()){
-            sFileHanlder(fileOrFolder);
-        }else if(stat.isDirectory()){
-            if(sBeforeFolderReadHandler(fileOrFolder)){
+        if (stat.isFile()) {
+            sFileHandler(fileOrFolder);
+        } else if (stat.isDirectory()) {
+            if (sBeforeFolderReadHandler(fileOrFolder)) {
                 fs.readdirSync(fileOrFolder).forEach((file) => {
-                    scanFileOrFolder(resolve(fileOrFolder,file), options);
+                    scanFileOrFolder(resolve(fileOrFolder, file), options);
                 });
                 sAfterFolderReadHandler(fileOrFolder);
             }
@@ -27,16 +27,16 @@ function scanFileOrFolder(fileOrFolder, options){
 // 删除目录/文件
 function deleteFileOrFolder(fileOrFolder) {
     scanFileOrFolder(fileOrFolder, {
-        fileHanlder: function(fileNam){
+        fileHandler: function (fileNam) {
             fs.unlinkSync(fileNam);
-        }, 
-        afterFolderReadHandler: function(folder){
+        },
+        afterFolderReadHandler: function (folder) {
             fs.rmdirSync(folder);
-        }
+        },
     });
 }
 
 module.exports = {
     scanFileOrFolder,
-    deleteFileOrFolder
+    deleteFileOrFolder,
 };

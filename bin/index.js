@@ -5,7 +5,8 @@ const { resolve } = require("path");
 const { deleteFileOrFolder, scanFileOrFolder } = require("../utils");
 
 // 默认模板名字
-const defaultTmplDirName = ".ts-tmpl";
+const defaultTemplateDirName = ".ts-template";
+
 // 忽略规则
 const ignorePatternList = (function () {
     const patternList = (function () {
@@ -21,7 +22,7 @@ const ignorePatternList = (function () {
         }
     })().filter((it) => it);
     patternList.push(".git");
-    patternList.push(defaultTmplDirName);
+    patternList.push(defaultTemplateDirName);
     return patternList.map((it) => {
         const reStr = it.replace(/\./, "\\.").replace(/\*/g, ".*?");
         return new RegExp("^" + reStr + "$");
@@ -62,6 +63,7 @@ const fileName2VarName = function (fileName) {
         .map((it, i) => (i === 0 ? it : firstUpcase(it)))
         .join("");
 };
+
 // 文件名字转命名
 const toGlobalExportVarName = function (fileName) {
     const paths = fileName.split(/[\/\\]/);
@@ -77,7 +79,7 @@ const toGlobalExportVarName = function (fileName) {
 const copyFileExt = ["png", "jpeg", "jpg"];
 
 // 读取所有文件，并整理为ts模板
-const project2TsTmpl = function (dirName, tsTmplName) {
+const project2TsTemplate = function (dirName, tsTemplateName) {
     // 生成相对路径
     const toAbsPath = (fullPath) => {
         const absPath = fullPath
@@ -86,7 +88,7 @@ const project2TsTmpl = function (dirName, tsTmplName) {
             .replace("\\", "/");
         const dirname = path.dirname(absPath);
         return {
-            fullname: absPath,
+            fullName: absPath,
             basename: path.basename(absPath),
             dirname,
             dirnameArr: dirname.replace(/\\/g, "/").split("/"),
@@ -95,14 +97,14 @@ const project2TsTmpl = function (dirName, tsTmplName) {
     // 记录文件夹下面文件{folderAbsName: ['fileAbsDirname']}
     const folderFileDict = {};
     scanFileOrFolder(dirName, {
-        fileHanlder: function (fileName) {
-            const { basename, dirname, dirnameArr, fullname } = toAbsPath(fileName);
-            if (!isIgnore(fullname)) {
+        fileHandler: function (fileName) {
+            const { basename, dirname, dirnameArr, fullName } = toAbsPath(fileName);
+            if (!isIgnore(fullName)) {
                 const isHideFile = /^\..*?$/.test(basename);
                 const ext = isHideFile ? "" : basename.slice(basename.lastIndexOf(".") + 1);
                 if (copyFileExt.includes(ext)) {
                     // 复制文件
-                    fs.copyFileSync(fileName, resolve(tsTmplName, fullname));
+                    fs.copyFileSync(fileName, resolve(tsTemplateName, fullName));
                 } else {
                     // 文本文件
                     const fileVarName = fileName2VarName(basename);
@@ -113,28 +115,38 @@ const project2TsTmpl = function (dirName, tsTmplName) {
                     folderFileDict[dirname].push(fileVarName);
                     // 写入文件
                     const pathAndFile = [...dirnameArr, basename.slice(0, basename.length - ext.length - (isHideFile ? 0 : 1))];
-                    const fileContent = ["const " + fileVarName + "File = ()=>`\n" + fs.readFileSync(fileName) + "\n`;", `export const ${toGlobalExportVarName(fullname)} = {toContent: ${fileVarName}File, name: [${pathAndFile.filter((it) => it !== ".").map((it) => "'" + it + "'")}], ext:'${ext}'};`];
-                    fs.writeFileSync(resolve(tsTmplName, dirname, fileVarName + ".ts"), fileContent.join("\n"));
+                    const fileContentStr = fs
+                        .readFileSync(fileName)
+                        .toString()
+                        .replace(/`/g, "\\`")
+                        .replace(/(\$\{.*?\})/g, "\\$1");
+                    // 文件内容名字
+                    const fileContentName = fileVarName + "Content";
+                    // 路径
+                    const pathAndName = pathAndFile.filter((it) => it !== ".");
+                    const fileNameStr = pathAndName.pop() || "";
+                    const fileContent = ["export const " + fileContentName + " = `\n" + fileContentStr + "\n`;", `export const ${toGlobalExportVarName(fullName)} = {content: ${fileContentName}, paths: [${pathAndName.map((it) => "'" + it + "'")}], name: '${fileNameStr}', extension:'${ext}'};`];
+                    fs.writeFileSync(resolve(tsTemplateName, dirname, fileVarName + ".ts"), fileContent.join("\n"));
                 }
             }
         },
         beforeFolderReadHandler: function (folder) {
-            const { fullname } = toAbsPath(folder);
-            if (!isIgnore(fullname)) {
-                fs.mkdirSync(resolve(tsTmplName, fullname));
+            const { fullName } = toAbsPath(folder);
+            if (!isIgnore(fullName)) {
+                fs.mkdirSync(resolve(tsTemplateName, fullName));
                 return true;
             } else {
                 return false;
             }
         },
         afterFolderReadHandler: function (folder) {
-            const { fullname } = toAbsPath(folder);
+            const { fullName } = toAbsPath(folder);
             const toExport = (exportFileList) => (exportFileList || []).map((it) => `export * from "./${it}";`);
             // 写index.ts
             let fileContent = [];
-            if (fullname) {
+            if (fullName) {
                 // 非根目录写入index.ts
-                fileContent = toExport(folderFileDict[fullname]);
+                fileContent = toExport(folderFileDict[fullName]);
             } else {
                 // 根目录写入index.ts
                 for (const key in folderFileDict) {
@@ -146,22 +158,22 @@ const project2TsTmpl = function (dirName, tsTmplName) {
                 }
             }
             if (fileContent.length > 0) {
-                fs.writeFileSync(resolve(tsTmplName, fullname, "index.ts"), fileContent.join("\n"));
+                fs.writeFileSync(resolve(tsTemplateName, fullName, "index.ts"), fileContent.join("\n"));
             }
         },
     });
 };
 
 // 初始化函数
-const init = function (workDir, tmplDirName) {
-    if (!tmplDirName) {
-        tmplDirName = defaultTmplDirName;
+const init = function (workDir, templateDirName) {
+    if (!templateDirName) {
+        templateDirName = defaultTemplateDirName;
     }
-    console.log(`工作目录：${workDir}，生成模板目录名： ${tmplDirName}`);
+    console.log(`工作目录：${workDir}，生成模板目录名： ${templateDirName}`);
     // 清除旧目录
-    deleteFileOrFolder(resolve(workDir, tmplDirName));
+    deleteFileOrFolder(resolve(workDir, templateDirName));
     // 开始工作
-    project2TsTmpl(workDir, resolve(workDir, tmplDirName));
+    project2TsTemplate(workDir, resolve(workDir, templateDirName));
     console.log(`生成模板完毕，请验证！！！`);
 };
 
