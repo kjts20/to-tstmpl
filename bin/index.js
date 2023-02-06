@@ -7,30 +7,32 @@ const { deleteFileOrFolder, scanFileOrFolder } = require("../utils");
 // 默认模板名字
 const defaultTemplateDirName = ".ts-template";
 
+// 忽略列表
+const ignoreList = (function (ignoreFile) {
+    try {
+        return fs
+            .readFileSync(ignoreFile)
+            .toString()
+            .split("\n")
+            .filter((it) => !it.startsWith("#"));
+    } catch (e) {
+        console.log("没有设置忽略文件");
+        return [];
+    }
+})(".gitignore").filter((it) => it);
+
 // 忽略规则
-const ignorePatternList = (function () {
-    const patternList = (function () {
-        try {
-            return fs
-                .readFileSync(".gitignore")
-                .toString()
-                .split("\n")
-                .filter((it) => !it.startsWith("#"));
-        } catch (e) {
-            console.log("没有设置忽略文件");
-            return [];
-        }
-    })().filter((it) => it);
-    patternList.push(".git");
-    patternList.push(defaultTemplateDirName);
-    return patternList.map((it) => {
+const getIgnorePatternList = function (ignoreRules) {
+    ignoreRules.push(".git");
+    return ignoreRules.map((it) => {
         const reStr = it.replace(/\./, "\\.").replace(/\*/g, ".*?");
         return new RegExp("^" + reStr + "$");
     });
-})();
+};
 
 // 是否忽略
 const isIgnore = function (fileOrFolder) {
+    const ignorePatternList = getIgnorePatternList(ignoreList);
     for (const ignorePattern of ignorePatternList) {
         if (ignorePattern.test(path.basename(fileOrFolder))) {
             return true;
@@ -116,7 +118,7 @@ const project2TsTemplate = function (dirName, tsTemplateName) {
                     // 写入文件
                     const pathAndFile = [...dirnameArr, basename.slice(0, basename.length - ext.length - (isHideFile ? 0 : 1))];
                     const fileContentStr = fs
-                        .readFileSync(fileName)
+                        .readFileSync(fileName, "utf8")
                         .toString()
                         .replace(/`/g, "\\`")
                         .replace(/(\$\{.*?\})/g, "\\$1");
@@ -172,6 +174,8 @@ const init = function (workDir, templateDirName) {
     console.log(`工作目录：${workDir}，生成模板目录名： ${templateDirName}`);
     // 清除旧目录
     deleteFileOrFolder(resolve(workDir, templateDirName));
+    // 设置忽略文件
+    ignoreList.push(templateDirName);
     // 开始工作
     project2TsTemplate(workDir, resolve(workDir, templateDirName));
     console.log(`生成模板完毕，请验证！！！`);

@@ -1,7 +1,7 @@
 {
     "name": "@kjts20/to-tstmpl",
     "version": "0.0.12",
-    "description": "时时科技，目录转换为ets模版",
+    "description": "时时科技，目录转换为ts模版",
     "main": "bin/index.js",
     "bin": {
         "totstmpl": "bin/index.js"
