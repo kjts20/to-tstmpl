@@ -125,7 +125,7 @@ const project2TsTemplate = function (dirName, tsTemplateName) {
                     // 路径
                     const pathAndName = pathAndFile.filter((it) => it !== ".");
                     const fileNameStr = pathAndName.pop() || "";
-                    const fileContent = ["export const " + fileContentName + " = `\n" + fileContentStr + "\n`;", `export const ${toGlobalExportVarName(fullName)} = {content: ${fileContentName}, paths: [${pathAndName.map((it) => "'" + it + "'")}], name: '${fileNameStr}', extension:'${ext}'};`];
+                    const fileContent = ["const " + fileContentName + " = `\n" + fileContentStr + "\n`;", `export const ${toGlobalExportVarName(fullName)} = {content: ${fileContentName}, paths: [${pathAndName.map((it) => "'" + it + "'")}], name: '${fileNameStr}', extension:'${ext}'};`];
                     fs.writeFileSync(resolve(tsTemplateName, dirname, fileVarName + ".ts"), fileContent.join("\n"));
                 }
             }

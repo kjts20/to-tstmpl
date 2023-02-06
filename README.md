@@ -9,10 +9,14 @@
 
 #### 切换到工作目录
 
-#### 执行: sstotstmpl [生成文件夹名称]
+#### 执行: totstmpl [生成文件夹名称]
 
 比如： totstmpl .ts-temp
 
 ### 默认值
 
 -   使用.gitignore 进行忽略
+
+### 注意事项
+
+-   在.gitignore 文件中需要把模板目录名称添加进去
