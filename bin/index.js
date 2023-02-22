@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-const fs = require("fs");
-const path = require("path");
-const { resolve } = require("path");
-const { deleteFileOrFolder, scanFileOrFolder } = require("../utils");
+const fs = require('fs');
+const path = require('path');
+const { resolve } = require('path');
+const { deleteFileOrFolder, scanFileOrFolder } = require('../utils');
 
 // 默认模板名字
-const defaultTemplateDirName = ".ts-template";
+const defaultTemplateDirName = '.ts-template';
 
 // 忽略列表
 const ignoreList = (function (ignoreFile) {
@@ -13,20 +13,20 @@ const ignoreList = (function (ignoreFile) {
         return fs
             .readFileSync(ignoreFile)
             .toString()
-            .split("\n")
-            .filter((it) => !it.startsWith("#"));
+            .split('\n')
+            .filter(it => !it.startsWith('#'));
     } catch (e) {
-        console.log("没有设置忽略文件");
+        console.log('没有设置忽略文件');
         return [];
     }
-})(".gitignore").filter((it) => it);
+})('.gitignore').filter(it => it);
 
 // 忽略规则
 const getIgnorePatternList = function (ignoreRules) {
-    ignoreRules.push(".git");
-    return ignoreRules.map((it) => {
-        const reStr = it.replace(/\./, "\\.").replace(/\*/g, ".*?");
-        return new RegExp("^" + reStr + "$");
+    ignoreRules.push('.git');
+    return ignoreRules.map(it => {
+        const reStr = it.replace(/\./, '\\.').replace(/\*/g, '.*?');
+        return new RegExp('^' + reStr + '$');
     });
 };
 
@@ -45,25 +45,25 @@ const isIgnore = function (fileOrFolder) {
 const logger = {
     log: console.log,
     warn: console.warn,
-    error: console.error,
+    error: console.error
 };
 
 // 首字母大写
-const firstUpcase = (txt) => {
-    const it = (txt || "") + "";
-    return (it[0] || "").toUpperCase() + it.slice(1);
+const firstUpcase = txt => {
+    const it = (txt || '') + '';
+    return (it[0] || '').toUpperCase() + it.slice(1);
 };
-const firstLowercase = (txt) => {
-    const it = (txt || "") + "";
-    return (it[0] || "").toLowerCase() + it.slice(1);
+const firstLowercase = txt => {
+    const it = (txt || '') + '';
+    return (it[0] || '').toLowerCase() + it.slice(1);
 };
 
 // 文件名字转命名
 const fileName2VarName = function (fileName) {
-    return (fileName + "")
+    return (fileName + '')
         .split(/[\.\-\/\\\@]/)
         .map((it, i) => (i === 0 ? it : firstUpcase(it)))
-        .join("");
+        .join('');
 };
 
 // 文件名字转命名
@@ -74,28 +74,30 @@ const toGlobalExportVarName = function (fileName) {
             let name = fileName2VarName(it);
             return i === 0 ? name : firstUpcase(name);
         })
-        .join("");
+        .join('');
 };
 
 // 只是复制的文件
-const copyFileExt = ["png", "jpeg", "jpg"];
+const copyFileExt = ['png', 'jpeg', 'jpg'];
 
 // 读取所有文件，并整理为ts模板
 const project2TsTemplate = function (dirName, tsTemplateName) {
     // 生成相对路径
-    const toAbsPath = (fullPath) => {
+    const toAbsPath = fullPath => {
         const absPath = fullPath
-            .replace(dirName, "")
-            .replace(/^(\\|\/)(.+)$/, "$2")
-            .replace("\\", "/");
+            .replace(dirName, '')
+            .replace(/^(\\|\/)(.+)$/, '$2')
+            .replace('\\', '/');
         const dirname = path.dirname(absPath);
         return {
             fullName: absPath,
             basename: path.basename(absPath),
             dirname,
-            dirnameArr: dirname.replace(/\\/g, "/").split("/"),
+            dirnameArr: dirname.replace(/\\/g, '/').split('/')
         };
     };
+    // 所有模版写入json文件
+    const tmpls = [];
     // 记录文件夹下面文件{folderAbsName: ['fileAbsDirname']}
     const folderFileDict = {};
     scanFileOrFolder(dirName, {
@@ -103,7 +105,7 @@ const project2TsTemplate = function (dirName, tsTemplateName) {
             const { basename, dirname, dirnameArr, fullName } = toAbsPath(fileName);
             if (!isIgnore(fullName)) {
                 const isHideFile = /^\..*?$/.test(basename);
-                const ext = isHideFile ? "" : basename.slice(basename.lastIndexOf(".") + 1);
+                const ext = isHideFile ? '' : basename.slice(basename.lastIndexOf('.') + 1);
                 if (copyFileExt.includes(ext)) {
                     // 复制文件
                     fs.copyFileSync(fileName, resolve(tsTemplateName, fullName));
@@ -117,18 +119,27 @@ const project2TsTemplate = function (dirName, tsTemplateName) {
                     folderFileDict[dirname].push(fileVarName);
                     // 写入文件
                     const pathAndFile = [...dirnameArr, basename.slice(0, basename.length - ext.length - (isHideFile ? 0 : 1))];
-                    const fileContentStr = fs
-                        .readFileSync(fileName, "utf8")
-                        .toString()
-                        .replace(/`/g, "\\`")
-                        .replace(/(\$\{.*?\})/g, "\\$1");
+                    const sourceFileContentStr = fs.readFileSync(fileName, 'utf8').toString();
+                    const fileContentStr = sourceFileContentStr.replace(/`/g, '\\`').replace(/(\$\{.*?\})/g, '\\$1');
                     // 文件内容名字
-                    const fileContentName = fileVarName + "Content";
+                    const fileContentName = fileVarName + 'Content';
                     // 路径
-                    const pathAndName = pathAndFile.filter((it) => it !== ".");
-                    const fileNameStr = pathAndName.pop() || "";
-                    const fileContent = ["const " + fileContentName + " = `\n" + fileContentStr + "\n`;", `export const ${toGlobalExportVarName(fullName)} = {content: ${fileContentName}, paths: [${pathAndName.map((it) => "'" + it + "'")}], name: '${fileNameStr}', extension:'${ext}'};`];
-                    fs.writeFileSync(resolve(tsTemplateName, dirname, fileVarName + ".ts"), fileContent.join("\n"));
+                    const pathAndName = pathAndFile.filter(it => it !== '.');
+                    const fileNameStr = pathAndName.pop() || '';
+                    const fileContent = [
+                        'const ' + fileContentName + ' = `\n' + fileContentStr + '\n`;',
+                        `export const ${toGlobalExportVarName(fullName)} = {content: ${fileContentName}, paths: [${pathAndName.map(
+                            it => "'" + it + "'"
+                        )}], name: '${fileNameStr}', extension:'${ext}'};`
+                    ];
+                    fs.writeFileSync(resolve(tsTemplateName, dirname, fileVarName + '.ts'), fileContent.join('\n'));
+                    // 记录模版信息
+                    tmpls.push({
+                        name: fileNameStr,
+                        paths: pathAndName,
+                        content: sourceFileContentStr,
+                        extension: ext
+                    });
                 }
             }
         },
@@ -143,7 +154,7 @@ const project2TsTemplate = function (dirName, tsTemplateName) {
         },
         afterFolderReadHandler: function (folder) {
             const { fullName } = toAbsPath(folder);
-            const toExport = (exportFileList) => (exportFileList || []).map((it) => `export * from "./${it}";`);
+            const toExport = exportFileList => (exportFileList || []).map(it => `export * from "./${it}";`);
             // 写index.ts
             let fileContent = [];
             if (fullName) {
@@ -152,7 +163,7 @@ const project2TsTemplate = function (dirName, tsTemplateName) {
             } else {
                 // 根目录写入index.ts
                 for (const key in folderFileDict) {
-                    if (key === ".") {
+                    if (key === '.') {
                         fileContent = [...fileContent, ...toExport(folderFileDict[key])];
                     } else {
                         fileContent.push(`export * from "./${key}";`);
@@ -160,10 +171,12 @@ const project2TsTemplate = function (dirName, tsTemplateName) {
                 }
             }
             if (fileContent.length > 0) {
-                fs.writeFileSync(resolve(tsTemplateName, fullName, "index.ts"), fileContent.join("\n"));
+                fs.writeFileSync(resolve(tsTemplateName, fullName, 'index.ts'), fileContent.join('\n'));
             }
-        },
+        }
     });
+    // 把所有模版写入json文件
+    fs.writeFileSync(resolve(tsTemplateName, 'templates-lock.json'), JSON.stringify(tmpls));
 };
 
 // 初始化函数
