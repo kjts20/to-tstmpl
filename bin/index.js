@@ -24,6 +24,9 @@ const ignoreList = (function (ignoreFile) {
 // 忽略规则
 const getIgnorePatternList = function (ignoreRules) {
     ignoreRules.push('.git');
+    ignoreRules.push('.DS_Store');
+    ignoreRules.push('.idea');
+    ignoreRules.push('node_modules');
     return ignoreRules.map(it => {
         const reStr = it.replace(/\./, '\\.').replace(/\*/g, '.*?');
         return new RegExp('^' + reStr + '$');
