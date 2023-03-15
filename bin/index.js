@@ -81,7 +81,7 @@ const toGlobalExportVarName = function (fileName) {
 };
 
 // 只是复制的文件
-const copyFileExt = ['png', 'jpeg', 'jpg'];
+const copyFileExt = ['png', 'jpeg', 'jpg', 'ico', 'gif'];
 
 // 读取所有文件，并整理为ts模板
 const project2TsTemplate = function (dirName, tsTemplateName) {
