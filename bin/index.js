@@ -23,13 +23,15 @@ const ignoreList = (function (ignoreFile) {
 
 // 忽略规则
 const getIgnorePatternList = function (ignoreRules) {
-    ignoreRules.push('.git');
-    ignoreRules.push('.DS_Store');
-    ignoreRules.push('.idea');
-    ignoreRules.push('node_modules');
+    const ignoreList = ['.git', '.DS_Store', '.idea', 'node_modules'];
+    for (const it of ignoreList) {
+        if (!ignoreRules.includes(it)) {
+            ignoreRules.push(it);
+        }
+    }
     return ignoreRules.map(it => {
         const reStr = it.replace(/\./, '\\.').replace(/\*/g, '.*?');
-        return new RegExp('^' + reStr + '$');
+        return new RegExp('^' + reStr);
     });
 };
 
@@ -37,7 +39,7 @@ const getIgnorePatternList = function (ignoreRules) {
 const isIgnore = function (fileOrFolder) {
     const ignorePatternList = getIgnorePatternList(ignoreList);
     for (const ignorePattern of ignorePatternList) {
-        if (ignorePattern.test(path.basename(fileOrFolder))) {
+        if (ignorePattern.test(fileOrFolder)) {
             return true;
         }
     }
