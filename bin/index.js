@@ -43,7 +43,7 @@ const getIgnorePatternList = function (ignoreRules) {
                         return true;
                     } else {
                         if (path.includes('*')) {
-                            return new RegExp(reStr).test(path);
+                            return new RegExp('/' + reStr).test(path);
                         } else {
                             return false;
                         }
