@@ -30,23 +30,28 @@ const getIgnorePatternList = function (ignoreRules) {
         }
     }
     return ignoreRules.map(it => {
-        const reStr = it.replace(/\./, '\\.').replace(/\*/g, '.*?');
-        const re = new RegExp('^' + reStr);
+        const reStr = it
+            .replace(/\./, '\\.')
+            .replace(/\*/g, '.*?')
+            .replace('\\', '/')
+            .replace(/^(.*?)[\/]*$/, '$1');
         return {
             test(pathStr) {
                 const path = (pathStr || '') + '';
-                if (re.test(path)) {
+                if (new RegExp(`^${reStr}$`).test(path)) {
+                    return true;
+                } else if (new RegExp(`^${reStr}\/.+$`).test(path)) {
+                    return true;
+                } else if (new RegExp(`\/${reStr}$`).test(path)) {
+                    return true;
+                } else if (new RegExp(`\/${reStr}\/.+$`).test(path)) {
                     return true;
                 } else {
                     const pathParts = path.replace('\\', '/').split('/');
                     if (pathParts.includes(it)) {
                         return true;
                     } else {
-                        if (path.includes('*')) {
-                            return new RegExp('/' + reStr).test(path);
-                        } else {
-                            return false;
-                        }
+                        return false;
                     }
                 }
             }
