@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
-const { resolve } = require('path');
-const { deleteFileOrFolder, scanFileOrFolder } = require('../utils');
+const { scanFileOrFolder } = require('../utils');
 
-// 默认模板名字
-const defaultTemplateDirName = '.ts-template';
+// 配置文件后缀
+const configFileSuffix = '.tmpl.config.js';
+
+// 模板文件名称
+const tmplJsonName = 'sskj.tmpl';
 
 // 忽略列表
 const ignoreList = (function (ignoreFile) {
@@ -23,7 +25,7 @@ const ignoreList = (function (ignoreFile) {
 
 // 忽略规则
 const getIgnorePatternList = function (ignoreRules) {
-    const ignoreList = ['.git', '.DS_Store', '.idea', 'node_modules', '.sskj'];
+    const ignoreList = ['.git', '.DS_Store', '.idea', 'node_modules', '.sskj', '*' + configFileSuffix, tmplJsonName];
     for (const it of ignoreList) {
         if (!ignoreRules.includes(it)) {
             ignoreRules.push(it);
@@ -31,28 +33,32 @@ const getIgnorePatternList = function (ignoreRules) {
     }
     return ignoreRules.map(it => {
         const reStr = it
-            .replace(/\./, '\\.')
+            .replace(/\./g, '\\.')
             .replace(/\*/g, '.*?')
-            .replace('\\', '/')
-            .replace(/^(.*?)[\/]*$/, '$1');
+            .replace(/^(.*?)[\/]*$/g, '$1');
         return {
             test(pathStr) {
-                const path = (pathStr || '') + '';
-                if (new RegExp(`^${reStr}$`).test(path)) {
-                    return true;
-                } else if (new RegExp(`^${reStr}\/.+$`).test(path)) {
-                    return true;
-                } else if (new RegExp(`\/${reStr}$`).test(path)) {
-                    return true;
-                } else if (new RegExp(`\/${reStr}\/.+$`).test(path)) {
-                    return true;
-                } else {
-                    const pathParts = path.replace('\\', '/').split('/');
-                    if (pathParts.includes(it)) {
+                try {
+                    const path = (pathStr || '') + '';
+                    if (new RegExp(`^${reStr}$`).test(path)) {
+                        return true;
+                    } else if (new RegExp(`^${reStr}\/.+$`).test(path)) {
+                        return true;
+                    } else if (new RegExp(`\/${reStr}$`).test(path)) {
+                        return true;
+                    } else if (new RegExp(`\/${reStr}\/.+$`).test(path)) {
                         return true;
                     } else {
-                        return false;
+                        const pathParts = path.replace('\\', '/').split('/');
+                        if (pathParts.includes(it)) {
+                            return true;
+                        } else {
+                            return false;
+                        }
                     }
+                } catch (e) {
+                    console.log('校验错误：', e);
+                    return false;
                 }
             }
         };
@@ -70,21 +76,38 @@ const isIgnore = function (fileOrFolder) {
     return false;
 };
 
-// 日志方面
-const logger = {
-    log: console.log,
-    warn: console.warn,
-    error: console.error
+/**
+ * 生成模板配置名字
+ * @param {名字} fileName
+ * @returns
+ */
+const genTmplConfigName = function (fileName) {
+    return `${fileName}${configFileSuffix}`;
+};
+
+/**
+ * 读取模板配置文件
+ * @param {模板名称} fileName
+ * @returns
+ */
+const readTmplConfig = function (fileName, rootDir) {
+    const confFileName = genTmplConfigName(fileName);
+    if (fs.existsSync(confFileName)) {
+        try {
+            const configJson = fs.readFileSync(confFileName)?.toString();
+            const func = new Function(`${configJson};return {title, forLoopFilename, forLoopItem, forLoopDs: forLoopDs.toString()}`);
+            return func();
+        } catch (err) {
+            console.log(`读取“${confFileName.substring(rootDir.length + 1)}”配置失败`, err);
+        }
+    }
+    return {};
 };
 
 // 首字母大写
 const firstUpcase = txt => {
     const it = (txt || '') + '';
     return (it[0] || '').toUpperCase() + it.slice(1);
-};
-const firstLowercase = txt => {
-    const it = (txt || '') + '';
-    return (it[0] || '').toLowerCase() + it.slice(1);
 };
 
 // 文件名字转命名
@@ -95,22 +118,11 @@ const fileName2VarName = function (fileName) {
         .join('');
 };
 
-// 文件名字转命名
-const toGlobalExportVarName = function (fileName) {
-    const paths = fileName.split(/[\/\\]/);
-    return paths
-        .map((it, i) => {
-            let name = fileName2VarName(it);
-            return i === 0 ? name : firstUpcase(name);
-        })
-        .join('');
-};
-
 // 只是复制的文件
 const copyFileExt = ['png', 'jpeg', 'jpg', 'ico', 'gif'];
 
 // 读取所有文件，并整理为ts模板
-const project2TsTemplate = function (dirName, tsTemplateName) {
+const project2TsTemplate = function (dirName) {
     // 生成相对路径
     const toAbsPath = fullPath => {
         const absPath = fullPath
@@ -136,8 +148,7 @@ const project2TsTemplate = function (dirName, tsTemplateName) {
                 const isHideFile = /^\..*?$/.test(basename);
                 const ext = isHideFile ? '' : basename.slice(basename.lastIndexOf('.') + 1);
                 if (copyFileExt.includes(ext)) {
-                    // 复制文件
-                    fs.copyFileSync(fileName, resolve(tsTemplateName, fullName));
+                    console.log('忽略文件：' + fileName);
                 } else {
                     // 文本文件
                     const fileVarName = fileName2VarName(basename);
@@ -149,79 +160,84 @@ const project2TsTemplate = function (dirName, tsTemplateName) {
                     // 写入文件
                     const pathAndFile = [...dirnameArr, basename.slice(0, basename.length - ext.length - (isHideFile ? 0 : 1))];
                     const sourceFileContentStr = fs.readFileSync(fileName, 'utf8').toString();
-                    const fileContentStr = sourceFileContentStr.replace(/`/g, '\\`').replace(/(\$\{.*?\})/g, '\\$1');
-                    // 文件内容名字
-                    const fileContentName = fileVarName + 'Content';
                     // 路径
                     const pathAndName = pathAndFile.filter(it => it !== '.');
                     const fileNameStr = pathAndName.pop() || '';
-                    const fileContent = [
-                        'const ' + fileContentName + ' = `\n' + fileContentStr + '\n`;',
-                        `export const ${toGlobalExportVarName(fullName)} = {content: ${fileContentName}, paths: [${pathAndName.map(
-                            it => "'" + it + "'"
-                        )}], name: '${fileNameStr}', extension:'${ext}'};`
-                    ];
-                    fs.writeFileSync(resolve(tsTemplateName, dirname, fileVarName + '.ts'), fileContent.join('\n'));
                     // 记录模版信息
                     tmpls.push({
                         name: fileNameStr,
                         paths: pathAndName,
                         content: sourceFileContentStr,
-                        extension: ext
+                        extension: ext,
+                        // 读取配置文件
+                        ...readTmplConfig(fileName, dirName)
                     });
                 }
             }
         },
-        beforeFolderReadHandler: function (folder) {
-            const { fullName } = toAbsPath(folder);
-            if (!isIgnore(fullName)) {
-                fs.mkdirSync(resolve(tsTemplateName, fullName));
-                return true;
-            } else {
-                return false;
-            }
-        },
-        afterFolderReadHandler: function (folder) {
-            const { fullName } = toAbsPath(folder);
-            const toExport = exportFileList => (exportFileList || []).map(it => `export * from "./${it}";`);
-            // 写index.ts
-            let fileContent = [];
-            if (fullName) {
-                // 非根目录写入index.ts
-                fileContent = toExport(folderFileDict[fullName]);
-            } else {
-                // 根目录写入index.ts
-                for (const key in folderFileDict) {
-                    if (key === '.') {
-                        fileContent = [...fileContent, ...toExport(folderFileDict[key])];
-                    } else {
-                        fileContent.push(`export * from "./${key}";`);
-                    }
-                }
-            }
-            if (fileContent.length > 0) {
-                fs.writeFileSync(resolve(tsTemplateName, fullName, 'index.ts'), fileContent.join('\n'));
-            }
-        }
+        beforeFolderReadHandler: folder => !isIgnore(toAbsPath(folder).fullName)
     });
     // 把所有模版写入json文件
-    fs.writeFileSync(resolve(tsTemplateName, 'templates-lock.json'), JSON.stringify(tmpls));
+    fs.writeFileSync(tmplJsonName, JSON.stringify(tmpls));
 };
 
-// 初始化函数
-const init = function (workDir, templateDirName) {
-    if (!templateDirName) {
-        templateDirName = defaultTemplateDirName;
-    }
-    console.log(`工作目录：${workDir}，生成模板目录名： ${templateDirName}`);
-    // 清除旧目录
-    deleteFileOrFolder(resolve(workDir, templateDirName));
-    // 设置忽略文件
-    ignoreList.push(templateDirName);
+// 转换为模板
+const toTmplJson = function (workDir) {
+    console.log(`工作目录：${workDir}`);
     // 开始工作
-    project2TsTemplate(workDir, resolve(workDir, templateDirName));
+    project2TsTemplate(workDir, workDir);
     console.log(`生成模板完毕，请验证！！！`);
 };
 
-// 初始化
-init(process.cwd(), process.argv[2]);
+// 写入文件
+const config2Folder = function (tmplList, rootDir) {
+    // 先创建文件夹
+    fs.mkdirSync(rootDir, { recursive: true });
+    // 循环生成文件
+    for (const tmpl of tmplList.filter(it => typeof it === 'object' && it)) {
+        const { title, forLoopFilename, forLoopItem, forLoopDs, name, paths, content, extension } = tmpl;
+        // 循环创建文件夹
+        if (paths && paths.length > 0) {
+            fs.mkdirSync(path.resolve(rootDir, paths.join('/')), { recursive: true });
+        }
+        // 写入文件
+        const fileName = path.resolve(rootDir, [...(paths || []), [name, extension].filter(it => it).join('.')].filter(it => it).join('/'));
+        fs.writeFileSync(fileName, content);
+        // 写入配置文件
+        const defaltTitle = '模板文件';
+        if ((title && !['模板页面', defaltTitle].includes(title)) || forLoopFilename || forLoopItem || forLoopDs) {
+            fs.writeFileSync(
+                genTmplConfigName(fileName),
+                [
+                    `// 模板名称 \nconst title = '${title || defaltTitle}';`,
+                    `// 循环文件名字（ejs）\nconst forLoopFilename = '${forLoopFilename || ''}';`,
+                    `// 循环子项（循环命名）\nconst forLoopItem = '${forLoopItem || ''}';`,
+                    `// 循环数据源Promise函数（入参是项目数据）\nconst forLoopDs = ${forLoopDs || 'null'};`
+                ].join('\n\n')
+            );
+        }
+    }
+};
+
+(function (pwd, type, ...args) {
+    if (type === 'config2Folder') {
+        (function (confFileName, dir) {
+            if (!confFileName) {
+                console.log('配置文件名不存在，第三个参数请传入配置文件名字');
+            } else {
+                const confFile = path.resolve(pwd, confFileName);
+                if (fs.existsSync(confFile)) {
+                    const json = fs.readFileSync(confFile).toString();
+                    config2Folder(JSON.parse(json), path.resolve(pwd, dir || 'test'));
+                } else {
+                    console.log('配置文件名不正确，第三个参数请传入正确配置文件名字', confFile);
+                }
+            }
+        })(...args);
+    } else if (type === 'toConfig') {
+        // 转配置
+        toTmplJson(pwd);
+    } else {
+        console.log('第一个参数Type：只允许传入：config2Folder | toConfig', { type });
+    }
+})(process.cwd(), ...process.argv.slice(2));

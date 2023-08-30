@@ -9,9 +9,13 @@
 
 #### 切换到工作目录
 
-#### 执行: totstmpl [生成文件夹名称]
+#### 生成模板配置
 
-比如： totstmpl .ts-temp
+比如： totstmpl toConfig
+
+#### 模板配置文件中还原到文件夹中（模板：sskj.tmpl）
+
+比如：totstmpl config2Folder sskj.tmpl
 
 ### 默认值
 
