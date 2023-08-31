@@ -95,7 +95,7 @@ const readTmplConfig = function (fileName, rootDir) {
     if (fs.existsSync(confFileName)) {
         try {
             const configJson = fs.readFileSync(confFileName)?.toString();
-            const func = new Function(`${configJson};return {title, forLoopFilename, forLoopItem, forLoopDs: forLoopDs.toString()}`);
+            const func = new Function(`${configJson};return {title, forLoopFilename, forLoopItem, forLoopDs: forLoopDs?.toString() || ''}`);
             return func();
         } catch (err) {
             console.log(`读取“${confFileName.substring(rootDir.length + 1)}”配置失败`, err);
@@ -212,7 +212,7 @@ const config2Folder = function (tmplList, rootDir) {
                     `// 模板名称 \nconst title = '${title || defaltTitle}';`,
                     `// 循环文件名字（ejs）\nconst forLoopFilename = '${forLoopFilename || ''}';`,
                     `// 循环子项（循环命名）\nconst forLoopItem = '${forLoopItem || ''}';`,
-                    `// 循环数据源Promise函数（入参是项目数据）\nconst forLoopDs = ${forLoopDs || "''"}`
+                    `// 循环数据源Promise函数（入参是项目数据）\nconst forLoopDs = ${forLoopDs || null}`
                 ].join('\n\n')
             );
         }
