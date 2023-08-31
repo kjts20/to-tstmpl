@@ -212,7 +212,7 @@ const config2Folder = function (tmplList, rootDir) {
                     `// 模板名称 \nconst title = '${title || defaltTitle}';`,
                     `// 循环文件名字（ejs）\nconst forLoopFilename = '${forLoopFilename || ''}';`,
                     `// 循环子项（循环命名）\nconst forLoopItem = '${forLoopItem || ''}';`,
-                    `// 循环数据源Promise函数（入参是项目数据）\nconst forLoopDs = ${forLoopDs || 'null'};`
+                    `// 循环数据源Promise函数（入参是项目数据）\nconst forLoopDs = ${forLoopDs || 'null'}`
                 ].join('\n\n')
             );
         }
@@ -228,7 +228,7 @@ const config2Folder = function (tmplList, rootDir) {
                 const confFile = path.resolve(pwd, confFileName);
                 if (fs.existsSync(confFile)) {
                     const json = fs.readFileSync(confFile).toString();
-                    config2Folder(JSON.parse(json), path.resolve(...[pwd, dir].filter(it => it)));
+                    config2Folder(JSON.parse(json), path.resolve(pwd, dir || './'));
                 } else {
                     console.log('配置文件名不正确，第三个参数请传入正确配置文件名字', confFile);
                 }
