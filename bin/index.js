@@ -96,7 +96,13 @@ const readTmplConfig = function (fileName, rootDir) {
         try {
             const configJson = fs.readFileSync(confFileName)?.toString();
             const func = new Function(`${configJson};return {title, forLoopFilename, forLoopItem, forLoopDs: forLoopDs?.toString() || ''}`);
-            return func();
+            const res = func();
+            const obj = {};
+            for (const key in res) {
+                const val = res[key];
+                val || (obj[key] = val);
+            }
+            return obj;
         } catch (err) {
             console.log(`读取“${confFileName.substring(rootDir.length + 1)}”配置失败`, err);
         }
