@@ -9,23 +9,9 @@ const configFileSuffix = '.tmpl.config.js';
 // 模板文件名称
 const tmplJsonName = 'sskj.tmpl';
 
-// 忽略列表
-const ignoreList = (function (ignoreFile) {
-    try {
-        return fs
-            .readFileSync(ignoreFile)
-            .toString()
-            .split('\n')
-            .filter(it => !it.startsWith('#'));
-    } catch (e) {
-        console.log('没有设置忽略文件');
-        return [];
-    }
-})('.gitignore').filter(it => it);
-
 // 忽略规则
 const getIgnorePatternList = function (ignoreRules) {
-    const ignoreList = ['.git', '.DS_Store', '.idea', 'node_modules', '.sskj', '*' + configFileSuffix, tmplJsonName];
+    const ignoreList = ['.git', '.DS_Store', '.idea', 'node_modules', '.sskj', '.tmplignore', '*' + configFileSuffix, tmplJsonName];
     for (const it of ignoreList) {
         if (!ignoreRules.includes(it)) {
             ignoreRules.push(it);
@@ -66,8 +52,8 @@ const getIgnorePatternList = function (ignoreRules) {
 };
 
 // 是否忽略
-const isIgnore = function (fileOrFolder) {
-    const ignorePatternList = getIgnorePatternList(ignoreList);
+const isIgnore = function (fileOrFolder, ignores) {
+    const ignorePatternList = getIgnorePatternList(ignores);
     for (const ignorePattern of ignorePatternList) {
         if (ignorePattern.test(fileOrFolder)) {
             return true;
@@ -129,6 +115,28 @@ const copyFileExt = ['png', 'jpeg', 'jpg', 'ico', 'gif'];
 
 // 读取所有文件，并整理为ts模板
 const project2TsTemplate = function (dirName) {
+    // 读取忽略文件
+    const ignoreList = (function (ignoreFiles) {
+        let list = [];
+        for (const fileName of ignoreFiles) {
+            const filePath = path.resolve(dirName, fileName);
+            if (fs.existsSync(filePath)) {
+                try {
+                    list = [
+                        ...list,
+                        ...fs
+                            .readFileSync(filePath)
+                            .toString()
+                            .split('\n')
+                            .filter(it => !it.startsWith('#'))
+                    ];
+                } catch (e) {
+                    console.log(`忽略文件“${fileName}”解析错误: `, e);
+                }
+            }
+        }
+        return list.filter(it => it);
+    })(['.gitignore', '.tmplignore']);
     // 生成相对路径
     const toAbsPath = fullPath => {
         const absPath = fullPath
@@ -150,7 +158,7 @@ const project2TsTemplate = function (dirName) {
     scanFileOrFolder(dirName, {
         fileHandler: function (fileName) {
             const { basename, dirname, dirnameArr, fullName } = toAbsPath(fileName);
-            if (!isIgnore(fullName)) {
+            if (!isIgnore(fullName, ignoreList)) {
                 const isHideFile = /^\..*?$/.test(basename);
                 const ext = isHideFile ? '' : basename.slice(basename.lastIndexOf('.') + 1);
                 if (copyFileExt.includes(ext)) {
@@ -181,7 +189,7 @@ const project2TsTemplate = function (dirName) {
                 }
             }
         },
-        beforeFolderReadHandler: folder => !isIgnore(toAbsPath(folder).fullName)
+        beforeFolderReadHandler: folder => !isIgnore(toAbsPath(folder).fullName, ignoreList)
     });
     // 把所有模版写入json文件
     fs.writeFileSync(tmplJsonName, JSON.stringify(tmpls));
