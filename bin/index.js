@@ -212,7 +212,7 @@ const config2Folder = function (tmplList, rootDir) {
                     `// 模板名称 \nconst title = '${title || defaltTitle}';`,
                     `// 循环文件名字（ejs）\nconst forLoopFilename = '${forLoopFilename || ''}';`,
                     `// 循环子项（循环命名）\nconst forLoopItem = '${forLoopItem || ''}';`,
-                    `// 循环数据源Promise函数（入参是项目数据）\nconst forLoopDs = ${forLoopDs || ''}`
+                    `// 循环数据源Promise函数（入参是项目数据）\nconst forLoopDs = ${forLoopDs || "''"}`
                 ].join('\n\n')
             );
         }
