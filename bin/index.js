@@ -86,7 +86,7 @@ const readTmplConfig = function (fileName, rootDir) {
             const obj = {};
             for (const key in res) {
                 const val = res[key];
-                val || (obj[key] = val);
+                val && (obj[key] = val);
             }
             return obj;
         } catch (err) {
